@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /img/
+
+Sitemap: https://suprfly.io/sitemap.xml

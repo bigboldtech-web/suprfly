@@ -1,0 +1,499 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTH
+// ============================================
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  name            String?
+  avatarUrl       String?
+
+  // Plan & Limits
+  plan               Plan      @default(FREE)
+  planExpiresAt      DateTime?
+  appSumoTier        Int?
+  appSumoCode        String?   @unique
+  stripeCustomerId   String?   @unique
+  razorpayCustomerId String?   @unique
+
+  // Dynamic plan limits (workflow-aware)
+  maxAccounts              Int @default(1)
+  maxWorkflowsPerAccount   Int @default(2)
+  maxKeywordsPerWorkflow   Int @default(5)
+  maxCreatorsPerWorkflow   Int @default(20)
+  maxCommentsDayPerAccount Int @default(50)
+  maxCommentsDayGlobal     Int @default(50)
+
+  // Status
+  isActive             Boolean   @default(true)
+  isAdmin              Boolean   @default(false)
+  emailVerified        Boolean   @default(false)
+  emailVerifyToken     String?
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+
+  // Global daily quota (across all accounts)
+  globalCommentsTodayCount Int       @default(0)
+  globalCommentsTodayDate  DateTime? @db.Date
+
+  // Timestamps
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  accounts      ConnectedAccount[]
+  tones         Tone[]
+  workflows     Workflow[]
+  keywords      Keyword[]
+  creators      Creator[]
+  comments      Comment[]
+  analytics     AnalyticsSnapshot[]
+  sessions      UserSession[]
+  subscriptions Subscription[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+enum Plan {
+  FREE
+  STARTER
+  GROWTH
+  AGENCY
+  LIFETIME
+}
+
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  refreshToken String   @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_sessions")
+}
+
+// ============================================
+// CONNECTED SOCIAL ACCOUNTS
+// ============================================
+
+model ConnectedAccount {
+  id               String      @id @default(cuid())
+  userId           String
+  platform         Platform
+  accountKind      AccountKind @default(PERSONAL)
+  platformUserId   String
+  platformUsername String
+  profileUrl       String?
+  avatarUrl        String?
+
+  // For COMPANY accounts (LinkedIn org pages)
+  organizationId String?
+
+  // Status
+  isActive             Boolean   @default(true)
+  sessionData          String    // AES-256-GCM encrypted JSON of cookies
+  sessionValid         Boolean   @default(true)
+  lastSessionCheck     DateTime?
+  sessionInvalidReason String?
+
+  // Per-account daily quota (hard cap 50 for safety)
+  commentsTodayCount Int       @default(0)
+  commentsTodayDate  DateTime? @db.Date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization LinkedInOrganization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  workflows    Workflow[]
+  comments     Comment[]
+
+  @@unique([userId, platform, platformUserId, accountKind])
+  @@index([userId])
+  @@index([isActive, sessionValid])
+  @@map("connected_accounts")
+}
+
+enum Platform {
+  LINKEDIN
+  TWITTER
+}
+
+enum AccountKind {
+  PERSONAL
+  COMPANY
+}
+
+model LinkedInOrganization {
+  id         String   @id @default(cuid())
+  orgUrn     String   @unique // urn:li:organization:12345
+  name       String
+  logoUrl    String?
+  vanityName String? // /company/<vanity>
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  accounts ConnectedAccount[]
+
+  @@map("linkedin_organizations")
+}
+
+// ============================================
+// TONES (standalone, reusable across workflows)
+// ============================================
+
+model Tone {
+  id               String           @id @default(cuid())
+  userId           String
+  name             String
+  interactionStyle InteractionStyle @default(FRIENDLY)
+  writingStyle     WritingStyle     @default(CONVERSATIONAL)
+  customPrompt     String           @default("") // if non-empty, overrides preset styles
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workflows Workflow[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("tones")
+}
+
+enum InteractionStyle {
+  BOLD_CHALLENGING // Push back respectfully, question assumptions
+  FRIENDLY         // Warm, encouraging
+  CURIOUS          // Ask thoughtful questions
+  PROFESSIONAL     // Polished and respectful
+  SUPPORTIVE       // Affirm and amplify
+  CONTRARIAN       // Offer a different angle
+}
+
+enum WritingStyle {
+  SHARP_FLOWING  // Clear rhythm, vivid over elegant
+  CONVERSATIONAL // Casual, natural
+  POLISHED       // Refined, formal
+  PUNCHY         // Short, direct sentences
+  STORY_DRIVEN   // Brief anecdotes
+  ANALYTICAL     // Data and reasoning forward
+}
+
+// ============================================
+// WORKFLOWS (first-class entity that ties everything together)
+// ============================================
+
+model Workflow {
+  id              String        @id @default(cuid())
+  userId          String
+  accountId       String
+  toneId          String
+  name            String
+  targetType      TargetType    @default(KEYWORD)
+  timezone        String        @default("Asia/Kolkata")
+  autoPost        Boolean       @default(false) // false = manual review queue
+  language        String        @default("en-US")
+  commentTone     CommentTone   @default(PROFESSIONAL_TONE)
+  emojiEnabled    Boolean       @default(false)
+  commentLength   CommentLength @default(SHORT)
+  dailyLimit      Int           @default(10)
+  isActive        Boolean       @default(true)
+
+  // Per-workflow daily counter
+  commentsTodayCount Int       @default(0)
+  commentsTodayDate  DateTime? @db.Date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account  ConnectedAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tone     Tone             @relation(fields: [toneId], references: [id], onDelete: Restrict)
+  keywords Keyword[]
+  creators Creator[]
+  comments Comment[]
+
+  @@index([userId])
+  @@index([isActive, accountId])
+  @@map("workflows")
+}
+
+enum TargetType {
+  KEYWORD
+  CREATOR
+}
+
+enum CommentTone {
+  ENERGETIC         // Punchy, dynamic, straight to point
+  PROFESSIONAL_TONE // Polished, considered
+  CASUAL            // Friendly, informal
+  WITTY             // Light humor, clever
+  EMPATHETIC        // Warm, acknowledging
+  THOUGHTFUL        // Reflective, deeper
+}
+
+enum CommentLength {
+  SHORT  // 30-40 words
+  MEDIUM // 50-70 words
+  LONG   // 100+ words
+}
+
+// ============================================
+// TARGETING — now scoped to a Workflow
+// ============================================
+
+model Keyword {
+  id            String    @id @default(cuid())
+  userId        String
+  workflowId    String
+  keyword       String
+  isActive      Boolean   @default(true)
+  commentsCount Int       @default(0)
+  lastCommentAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, keyword])
+  @@index([userId])
+  @@map("keywords")
+}
+
+model Creator {
+  id                String    @id @default(cuid())
+  userId            String
+  workflowId        String
+  platform          Platform
+  creatorProfileId  String
+  creatorName       String
+  creatorUsername   String?
+  creatorAvatarUrl  String?
+  creatorProfileUrl String?
+  followerCount     Int?
+  isActive          Boolean   @default(true)
+  commentsCount     Int       @default(0)
+  lastCommentAt     DateTime?
+  lastCheckedAt     DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, creatorProfileId])
+  @@index([userId])
+  @@index([isActive, lastCheckedAt])
+  @@map("creators")
+}
+
+// ============================================
+// POSTS & COMMENTS
+// ============================================
+
+model DiscoveredPost {
+  id              String    @id @default(cuid())
+  platform        Platform
+  postId          String
+  authorId        String
+  authorName      String
+  authorUsername  String?
+  postContent     String
+  postUrl         String?
+  postLanguage    String?
+  publishedAt     DateTime
+  matchType       MatchType
+  matchValue      String
+  isSensitive     Boolean   @default(false)
+  sensitiveReason String?
+  isProcessed     Boolean   @default(false)
+  processedAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  comments Comment[]
+
+  @@unique([platform, postId])
+  @@index([isProcessed, createdAt])
+  @@index([matchType, matchValue])
+  @@map("discovered_posts")
+}
+
+enum MatchType {
+  KEYWORD
+  CREATOR
+}
+
+model Comment {
+  id                String        @id @default(cuid())
+  userId            String
+  workflowId        String
+  accountId         String
+  postId            String
+  commentText       String
+  originalText      String? // pre-edit text if user edited before approving
+  isEdited          Boolean       @default(false)
+  status            CommentStatus @default(PENDING_REVIEW)
+  platform          Platform
+  platformCommentId String?
+  failureReason     String?
+  retryCount        Int           @default(0)
+  maxRetries        Int           @default(3)
+  rejectReason      String?
+
+  // AI metadata
+  aiModel            String?
+  aiPromptTokens     Int?
+  aiCompletionTokens Int?
+  aiCostCents        Float?
+  generationTimeMs   Int?
+
+  // Engagement stats (polled by statsPollWorker)
+  likesCount        Int       @default(0)
+  repliesCount      Int       @default(0)
+  viewsCount        Int       @default(0)
+  statsLastPolledAt DateTime?
+
+  // Timestamps
+  scheduledFor DateTime?
+  approvedAt   DateTime?
+  postedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workflow Workflow         @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  account  ConnectedAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  post     DiscoveredPost   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([workflowId, status])
+  @@index([accountId, status])
+  @@index([status, scheduledFor])
+  @@index([status, postedAt(sort: Desc)])
+  @@map("comments")
+}
+
+enum CommentStatus {
+  PENDING_REVIEW
+  APPROVED
+  QUEUED
+  POSTING
+  POSTED
+  FAILED
+  REJECTED
+  FILTERED
+}
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+model AnalyticsSnapshot {
+  id             String   @id @default(cuid())
+  userId         String
+  accountId      String
+  platform       Platform
+  date           DateTime @db.Date
+
+  followers      Int   @default(0)
+  connections    Int   @default(0)
+  commentsPosted Int   @default(0)
+  profileViews   Int   @default(0)
+  impressions    Int   @default(0)
+  likes          Int   @default(0)
+  engagementRate Float?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, accountId, platform, date])
+  @@index([userId, date(sort: Desc)])
+  @@map("analytics_snapshots")
+}
+
+// ============================================
+// BILLING
+// ============================================
+
+model Subscription {
+  id                     String          @id @default(cuid())
+  userId                 String
+  plan                   Plan
+  status                 SubStatus       @default(ACTIVE)
+  provider               PaymentProvider
+  providerSubscriptionId String?
+  providerPlanId         String?
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  cancelledAt            DateTime?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+
+enum SubStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  EXPIRED
+  TRIALING
+}
+
+enum PaymentProvider {
+  STRIPE
+  RAZORPAY
+  APPSUMO
+  MANUAL
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  SESSION_EXPIRED
+  DAILY_SUMMARY
+  PLAN_LIMIT_REACHED
+  PLAN_EXPIRING
+  COMMENT_FAILED
+  COMMENT_PENDING_REVIEW
+  SYSTEM
+}

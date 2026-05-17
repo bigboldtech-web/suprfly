@@ -1,0 +1,115 @@
+name: Deploy Suprfly
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: suprfly
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: suprfly_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: Run linter
+        working-directory: backend
+        run: npm run lint || true
+
+      - name: Type check backend
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
+
+      - name: Install dashboard dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Build dashboard
+        working-directory: dashboard
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://api.suprfly.io/api/v1
+
+  deploy-production:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Production
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_SERVER_IP }}
+          username: suprfly
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/suprfly/apps/suprfly
+
+            # Pull latest code
+            git pull origin main
+
+            # Backend
+            cd backend
+            npm ci --production
+            npx prisma generate
+            npx prisma migrate deploy
+            npm run build
+            pm2 restart suprfly-api --update-env
+
+            # Dashboard
+            cd ../dashboard
+            npm ci
+            NEXT_PUBLIC_API_URL=https://api.suprfly.io/api/v1 npm run build
+            pm2 restart suprfly-dashboard --update-env
+
+            # Verify
+            sleep 5
+            pm2 status
+            curl -sf https://api.suprfly.io/health || echo "Health check failed!"
+
+            echo "Production deployment complete!"
+
+  notify:
+    needs: deploy-production
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify on failure
+        if: needs.deploy-production.result == 'failure'
+        run: echo "Deployment failed! Check GitHub Actions logs."

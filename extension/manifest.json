@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "Suprfly — AI Auto-Comments for LinkedIn & X",
+  "version": "2.0.0",
+  "description": "Connect your LinkedIn and X accounts to Suprfly. Auto-comment on posts using AI that sounds like you.",
+
+  "permissions": [
+    "cookies",
+    "storage",
+    "alarms",
+    "activeTab",
+    "tabs"
+  ],
+
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://linkedin.com/*",
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://api.suprfly.io/*",
+    "http://localhost:5000/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/*",
+        "https://linkedin.com/*",
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

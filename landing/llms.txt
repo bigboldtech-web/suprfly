@@ -1,0 +1,50 @@
+# Suprfly — AI Auto-Comments for LinkedIn & X
+
+## What is Suprfly?
+Suprfly is an AI-powered SaaS platform that automatically generates and posts comments on LinkedIn and X (Twitter) posts. It matches your voice, tone, and personality so comments sound authentically like you.
+
+## How it works
+1. Install the Suprfly Chrome Extension
+2. Connect your LinkedIn and/or X accounts
+3. Set keyword targets (e.g., "SaaS", "AI", "B2B") and/or creator targets (specific profiles to follow)
+4. Configure your tone, formality, personality, and style preferences
+5. Suprfly discovers matching posts every 10 minutes and generates AI comments
+6. Comments are posted automatically (or queued for manual approval)
+
+## Key Features
+- AI Voice Engine: Configure tone (Professional/Friendly/Casual/Passionate), formality, personality, comment length, question frequency
+- Keyword Targeting: Up to 25 keywords per account, auto-discovers matching posts
+- Creator Targeting: Follow up to 100 creators, comment within minutes of their posts
+- Content Safety: Two-layer filter (keyword + AI classification) auto-skips political, discriminatory, tragic, explicit content
+- Multi-Language: 25+ languages, auto-detects post language and responds natively
+- Speed: Comments within 15 minutes of post publication
+- Timezone-Aware: Only comments during business hours in the target's timezone
+- Manual Approval Mode: Review every comment before it's posted
+- Analytics Dashboard: Track followers, connections, comments over time with CSV export
+
+## Pricing
+- Starter: $0/mo (7-day trial, 25 comments/day, 1 account)
+- Growth: $49/mo (150 comments/day, 2 accounts, LinkedIn + X)
+- Agency: $149/mo (500 comments/day, 5 accounts, API access)
+
+## Platforms Supported
+- LinkedIn
+- X (Twitter)
+
+## Chrome Extension
+- Captures session cookies securely (AES-256-GCM encrypted)
+- Auto-refreshes sessions every 30 minutes
+- Does NOT access passwords, DMs, or private content
+
+## Contact
+- Website: https://suprfly.io
+- Dashboard: https://app.suprfly.io
+- Support: support@suprfly.io
+- Blog: https://suprfly.io/blog/
+
+## Company
+- Founded: 2026
+- Users: 10,000+
+- Comments delivered: 5,000,000+
+- Languages: 25+
+- Account bans: 0

@@ -1,0 +1,56 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [stage]
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install & build backend
+        working-directory: backend
+        run: |
+          npm ci
+          npx prisma generate
+          npx tsc --noEmit
+          npm run build
+
+      - name: Install & build dashboard
+        working-directory: dashboard
+        run: |
+          npm ci
+          NEXT_PUBLIC_API_URL=https://api-staging.suprfly.io/api/v1 npm run build
+
+      - name: Deploy to Staging
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_SERVER_IP }}
+          username: suprfly
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/suprfly/apps/suprfly
+            git pull origin stage
+
+            cd backend
+            npm ci --production
+            npx prisma generate
+            npx prisma migrate deploy
+            npm run build
+            pm2 restart suprfly-api-staging --update-env
+
+            cd ../dashboard
+            npm ci
+            NEXT_PUBLIC_API_URL=https://api-staging.suprfly.io/api/v1 npm run build
+            pm2 restart suprfly-dashboard-staging --update-env
+
+            sleep 5
+            curl -sf https://api-staging.suprfly.io/health || echo "Staging health check failed!"
+            echo "Staging deployment complete!"

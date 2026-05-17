@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- ═══ STATE 1: Login Form ═══ -->
+  <div id="login-view" class="hidden">
+    <div class="login-section">
+      <div class="logo-big">supr<em>fly</em></div>
+      <div class="login-subtitle">Your AI wingman for LinkedIn & X</div>
+
+      <div id="login-error" class="error-msg hidden"></div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+      </div>
+
+      <button id="login-btn" class="btn btn-primary login-btn">Log In</button>
+
+      <div class="login-links">
+        <a id="signup-link" href="#">Don't have an account? Sign up</a>
+        <br>
+        <a id="forgot-link" href="#">Forgot password?</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STATE 2 & 3: Dashboard ═══ -->
+  <div id="dashboard-view" class="hidden">
+    <div class="header">
+      <div class="logo">supr<em>fly</em></div>
+      <div id="plan-badge" class="plan-badge">FREE</div>
+    </div>
+
+    <div class="user-info">
+      <div id="user-avatar" class="user-avatar">?</div>
+      <div>
+        <div id="user-name" class="user-name">User</div>
+        <div id="user-email" class="user-email">email@example.com</div>
+      </div>
+    </div>
+
+    <div class="connection-status">
+      <span id="status-dot" class="status-dot amber"></span>
+      <span id="connection-count">Connected 0/2</span>
+    </div>
+
+    <!-- LinkedIn Card -->
+    <div class="platform-card">
+      <div class="platform-header">
+        <div class="platform-left">
+          <div class="platform-icon linkedin">
+            <svg viewBox="0 0 24 24"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/></svg>
+          </div>
+          <div class="platform-name">LinkedIn</div>
+        </div>
+        <div id="linkedin-badge" class="platform-badge disconnected">Not Connected</div>
+      </div>
+      <div id="linkedin-details" class="platform-details hidden">
+        <span class="username" id="linkedin-username"></span>
+        &middot; <span id="linkedin-refreshed"></span>
+      </div>
+      <button id="linkedin-btn" class="btn btn-connect" data-platform="linkedin">Connect LinkedIn</button>
+    </div>
+
+    <!-- X / Twitter Card -->
+    <div class="platform-card">
+      <div class="platform-header">
+        <div class="platform-left">
+          <div class="platform-icon twitter">
+            <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </div>
+          <div class="platform-name">X (Twitter)</div>
+        </div>
+        <div id="twitter-badge" class="platform-badge disconnected">Not Connected</div>
+      </div>
+      <div id="twitter-details" class="platform-details hidden">
+        <span class="username" id="twitter-username"></span>
+        &middot; <span id="twitter-refreshed"></span>
+      </div>
+      <button id="twitter-btn" class="btn btn-connect" data-platform="twitter">Connect X</button>
+    </div>
+
+    <div id="instructions" class="instructions">
+      Log into LinkedIn or X in your browser, then click Connect above.
+    </div>
+
+    <div class="footer-actions">
+      <button id="dashboard-btn" class="btn btn-secondary">Open Dashboard</button>
+    </div>
+
+    <div class="logout-link">
+      <a id="logout-btn" href="#">Log Out</a>
+    </div>
+  </div>
+
+  <script src="utils.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
