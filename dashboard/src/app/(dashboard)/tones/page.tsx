@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTones, useTone, useCreateTone, useUpdateTone, useDeleteTone } from '@/hooks/useTones';
 import { Trash2, Plus, Sparkles, Save, MessageSquare, Edit3 } from 'lucide-react';
 import type { InteractionStyle, WritingStyle, Tone } from '@/types';
@@ -25,40 +25,13 @@ const WRITING_STYLES: { value: WritingStyle; label: string; desc: string }[] = [
 
 export default function TonesPage() {
   const { data: tones = [] } = useTones();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showCustomPrompt, setShowCustomPrompt] = useState(false);
-
-  useEffect(() => {
-    if (!selectedId && tones[0]) setSelectedId(tones[0].id);
-  }, [tones, selectedId]);
+  const [selectedIdState, setSelectedId] = useState<string | null>(null);
+  const selectedId = selectedIdState ?? tones[0]?.id ?? null;
 
   const { data: tone } = useTone(selectedId);
   const createTone = useCreateTone();
-  const updateTone = useUpdateTone();
   const deleteTone = useDeleteTone();
-
-  const [form, setForm] = useState<{ name: string; interactionStyle: InteractionStyle; writingStyle: WritingStyle; customPrompt: string }>({
-    name: '',
-    interactionStyle: 'FRIENDLY',
-    writingStyle: 'CONVERSATIONAL',
-    customPrompt: '',
-  });
-
-  useEffect(() => {
-    if (tone) {
-      setForm({
-        name: tone.name,
-        interactionStyle: tone.interactionStyle,
-        writingStyle: tone.writingStyle,
-        customPrompt: tone.customPrompt || '',
-      });
-    }
-  }, [tone]);
-
-  function handleSave() {
-    if (!selectedId) return;
-    updateTone.mutate({ id: selectedId, ...form });
-  }
+  const [showCustomPrompt, setShowCustomPrompt] = useState(false);
 
   function handleCreate() {
     const name = prompt('Tone name?');
@@ -113,7 +86,7 @@ export default function TonesPage() {
           </button>
 
           <button
-            onClick={() => setShowCustomPrompt(true)}
+            onClick={() => setShowCustomPrompt((v) => !v)}
             className="mt-3 w-full text-xs text-blue-500 hover:underline"
           >
             Click here to create your custom prompt
@@ -124,65 +97,83 @@ export default function TonesPage() {
           {!tone ? (
             <div className="text-center text-sm text-slate-400 py-12">Select or create a tone</div>
           ) : (
-            <div className="space-y-5">
-              <Field label="Tone Name" icon={<Edit3 className="w-3.5 h-3.5 text-slate-400" />}>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-800 focus:outline-none focus:border-blue-400"
-                />
-              </Field>
-
-              <Field label="Interaction Style" icon={<MessageSquare className="w-3.5 h-3.5 text-slate-400" />}>
-                <select
-                  value={form.interactionStyle}
-                  onChange={(e) => setForm({ ...form, interactionStyle: e.target.value as InteractionStyle })}
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:border-blue-400"
-                >
-                  {INTERACTION_STYLES.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label} — {s.desc}</option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Writing Style" icon={<Edit3 className="w-3.5 h-3.5 text-slate-400" />}>
-                <select
-                  value={form.writingStyle}
-                  onChange={(e) => setForm({ ...form, writingStyle: e.target.value as WritingStyle })}
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:border-blue-400"
-                >
-                  {WRITING_STYLES.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label} — {s.desc}</option>
-                  ))}
-                </select>
-              </Field>
-
-              {showCustomPrompt && (
-                <Field label="Custom Prompt (overrides preset styles when filled)">
-                  <textarea
-                    value={form.customPrompt}
-                    onChange={(e) => setForm({ ...form, customPrompt: e.target.value })}
-                    rows={6}
-                    placeholder="Describe exactly how you want comments to be written…"
-                    className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-blue-400 font-mono"
-                  />
-                </Field>
-              )}
-
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={handleSave}
-                  disabled={updateTone.isPending}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
-                >
-                  <Save className="w-4 h-4" />
-                  Save Tone
-                </button>
-              </div>
-            </div>
+            <ToneForm key={tone.id} tone={tone} showCustomPrompt={showCustomPrompt} />
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ToneForm({ tone, showCustomPrompt }: { tone: Tone; showCustomPrompt: boolean }) {
+  const updateTone = useUpdateTone();
+  const [form, setForm] = useState({
+    name: tone.name,
+    interactionStyle: tone.interactionStyle,
+    writingStyle: tone.writingStyle,
+    customPrompt: tone.customPrompt || '',
+  });
+
+  function handleSave() {
+    updateTone.mutate({ id: tone.id, ...form });
+  }
+
+  return (
+    <div className="space-y-5">
+      <Field label="Tone Name" icon={<Edit3 className="w-3.5 h-3.5 text-slate-400" />}>
+        <input
+          type="text"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-800 focus:outline-none focus:border-blue-400"
+        />
+      </Field>
+
+      <Field label="Interaction Style" icon={<MessageSquare className="w-3.5 h-3.5 text-slate-400" />}>
+        <select
+          value={form.interactionStyle}
+          onChange={(e) => setForm({ ...form, interactionStyle: e.target.value as InteractionStyle })}
+          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:border-blue-400"
+        >
+          {INTERACTION_STYLES.map((s) => (
+            <option key={s.value} value={s.value}>{s.label} — {s.desc}</option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Writing Style" icon={<Edit3 className="w-3.5 h-3.5 text-slate-400" />}>
+        <select
+          value={form.writingStyle}
+          onChange={(e) => setForm({ ...form, writingStyle: e.target.value as WritingStyle })}
+          className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:border-blue-400"
+        >
+          {WRITING_STYLES.map((s) => (
+            <option key={s.value} value={s.value}>{s.label} — {s.desc}</option>
+          ))}
+        </select>
+      </Field>
+
+      {showCustomPrompt && (
+        <Field label="Custom Prompt (overrides preset styles when filled)">
+          <textarea
+            value={form.customPrompt}
+            onChange={(e) => setForm({ ...form, customPrompt: e.target.value })}
+            rows={6}
+            placeholder="Describe exactly how you want comments to be written…"
+            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-blue-400 font-mono"
+          />
+        </Field>
+      )}
+
+      <div className="flex justify-end pt-2">
+        <button
+          onClick={handleSave}
+          disabled={updateTone.isPending}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
+        >
+          <Save className="w-4 h-4" />
+          Save Tone
+        </button>
       </div>
     </div>
   );

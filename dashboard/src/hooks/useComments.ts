@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { CommentRow } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 interface CommentFilters {
   tab?: 'POSTED' | 'PENDING';
@@ -38,7 +39,7 @@ export function useApproveComment() {
       qc.invalidateQueries({ queryKey: ['comments'] });
       toast.success('Comment approved — queued for posting');
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to approve'),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err) || 'Failed to approve'),
   });
 }
 
@@ -51,7 +52,7 @@ export function useEditComment() {
       qc.invalidateQueries({ queryKey: ['comments'] });
       toast.success('Comment updated');
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update'),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err) || 'Failed to update'),
   });
 }
 
@@ -64,6 +65,6 @@ export function useRejectComment() {
       qc.invalidateQueries({ queryKey: ['comments'] });
       toast.success('Comment rejected');
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to reject'),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err) || 'Failed to reject'),
   });
 }

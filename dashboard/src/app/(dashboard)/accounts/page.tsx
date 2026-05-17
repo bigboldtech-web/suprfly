@@ -5,7 +5,7 @@ import { useAccounts, useDisconnectAccount, useRefreshSession } from '@/hooks/us
 import { useGlobalQuota } from '@/hooks/useAnalytics';
 import { getInitials } from '@/lib/utils';
 import { RefreshCw, Trash2, Plus, Shield, ChevronRight } from 'lucide-react';
-import type { ConnectedAccount } from '@/types';
+import type { ConnectedAccount, QuotaSnapshot } from '@/types';
 
 export default function AccountsPage() {
   const { data: accounts = [] } = useAccounts();
@@ -43,7 +43,7 @@ export default function AccountsPage() {
 
 function AccountColumn({
   title, accounts, quota, icon, connectHelp,
-}: { title: string; accounts: ConnectedAccount[]; quota: any; icon: React.ReactNode; connectHelp: string }) {
+}: { title: string; accounts: ConnectedAccount[]; quota: QuotaSnapshot | undefined; icon: React.ReactNode; connectHelp: string }) {
   return (
     <div className="rounded-2xl bg-white border border-slate-200 p-5 flex flex-col">
       <div className="flex items-center gap-3 mb-4">
@@ -83,11 +83,11 @@ function AccountColumn({
   );
 }
 
-function AccountCard({ account, quota }: { account: ConnectedAccount; quota: any }) {
+function AccountCard({ account, quota }: { account: ConnectedAccount; quota: QuotaSnapshot | undefined }) {
   const disconnect = useDisconnectAccount();
   const refresh = useRefreshSession();
 
-  const accountQuota = quota?.accounts?.find((a: any) => a.accountId === account.id);
+  const accountQuota = quota?.accounts?.find((a) => a.accountId === account.id);
   const used = accountQuota?.used ?? account.commentsTodayCount ?? 0;
   const max = accountQuota?.max ?? 50;
   const pct = Math.min(100, Math.round((used / Math.max(1, max)) * 100));

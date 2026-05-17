@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
+import { apiErrorMessage } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -22,8 +23,8 @@ function ResetPasswordForm() {
     try {
       await api.post('/auth/reset-password', { token, password });
       router.push('/login?reset=success');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Reset failed');
+    } catch (err) {
+      setError(apiErrorMessage(err) || 'Reset failed');
     } finally {
       setLoading(false);
     }

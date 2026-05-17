@@ -1,14 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useAnalyticsSummary, useAnalyticsTimeseries } from '@/hooks/useAnalytics';
 import { formatNumber } from '@/lib/utils';
-import {
-  Area, AreaChart, CartesianGrid, Legend, Line, ResponsiveContainer,
-  Tooltip, XAxis, YAxis,
-} from 'recharts';
-import { MessageSquare, Eye, ThumbsUp, Users, ChevronDown, CheckCircle2, ChevronRight } from 'lucide-react';
+import { MessageSquare, Eye, ThumbsUp, Users, ChevronDown, CheckCircle2, ChevronRight, type LucideIcon } from 'lucide-react';
+
+const AnalyticsChart = dynamic(() => import('@/components/charts/AnalyticsChart'), {
+  ssr: false,
+  loading: () => <div className="h-72 w-full flex items-center justify-center text-xs text-slate-400">Loading chart…</div>,
+});
 
 const FAQ_ITEMS = [
   {
@@ -98,24 +100,7 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="h-72 w-full mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="impGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.25} />
-                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} />
-              <YAxis stroke="#94a3b8" fontSize={11} />
-              <Tooltip />
-              <Legend />
-              <Area type="monotone" dataKey="Impressions" stroke="#8b5cf6" fill="url(#impGrad)" strokeWidth={2} />
-              <Line type="monotone" dataKey="Comments" stroke="#3b82f6" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="Followers" stroke="#f59e0b" strokeWidth={2} dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
+          <AnalyticsChart data={chartData} />
         </div>
       </div>
 
@@ -148,7 +133,7 @@ export default function AnalyticsPage() {
 
 function StatCard({
   label, value, icon: Icon, tint,
-}: { label: string; value: number; icon: any; tint: 'blue' | 'violet' | 'emerald' | 'amber' }) {
+}: { label: string; value: number; icon: LucideIcon; tint: 'blue' | 'violet' | 'emerald' | 'amber' }) {
   const tints: Record<string, string> = {
     blue: 'bg-blue-50 text-blue-500',
     violet: 'bg-violet-50 text-violet-500',

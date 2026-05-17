@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useTones } from '@/hooks/useTones';
@@ -11,10 +11,11 @@ import {
 } from '@/hooks/useWorkflows';
 import { useGlobalQuota } from '@/hooks/useAnalytics';
 import type {
-  CommentLength, CommentTone, TargetType, Workflow, WorkflowKeyword, WorkflowCreator,
+  CommentLength, CommentTone, ConnectedAccount, QuotaSnapshot, Tone,
+  Workflow, WorkflowKeyword, WorkflowCreator,
 } from '@/types';
 import {
-  Search, Users, Calendar, MessageSquare, Globe, Smile, Sparkles, Plus, Trash2, Save,
+  Search, Users, MessageSquare, Smile, Sparkles, Plus, Trash2, Save,
   RotateCcw, Play, Pause, ExternalLink, ArrowRightLeft,
 } from 'lucide-react';
 
@@ -65,11 +66,8 @@ function WorkflowsInner() {
   const { data: tones = [] } = useTones();
   const { data: quota } = useGlobalQuota();
 
-  const [selectedId, setSelectedId] = useState<string | null>(initialId);
-
-  useEffect(() => {
-    if (!selectedId && workflows[0]) setSelectedId(workflows[0].id);
-  }, [workflows, selectedId]);
+  const [selectedIdState, setSelectedId] = useState<string | null>(initialId);
+  const selectedId = selectedIdState ?? workflows[0]?.id ?? null;
 
   const { data: workflow } = useWorkflow(selectedId);
   const createWorkflow = useCreateWorkflow();
@@ -161,7 +159,10 @@ function WorkflowsInner() {
 function WorkflowForm({
   workflow, accounts, tones, quota, onSave, onDelete, onToggle,
 }: {
-  workflow: Workflow; accounts: any[]; tones: any[]; quota: any;
+  workflow: Workflow;
+  accounts: ConnectedAccount[];
+  tones: Tone[];
+  quota: QuotaSnapshot | undefined;
   onSave: (patch: Partial<Workflow>) => void;
   onDelete: () => void;
   onToggle: (active: boolean) => void;
@@ -181,7 +182,7 @@ function WorkflowForm({
   });
 
   const accountQuota = useMemo(
-    () => quota?.accounts?.find((a: any) => a.accountId === form.accountId),
+    () => quota?.accounts?.find((a) => a.accountId === form.accountId),
     [quota, form.accountId],
   );
   const accountUsed = accountQuota?.used ?? 0;

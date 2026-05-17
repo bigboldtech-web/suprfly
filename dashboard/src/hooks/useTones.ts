@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { Tone } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 export function useTones() {
   return useQuery<Tone[]>({
@@ -34,7 +35,7 @@ export function useCreateTone() {
       qc.invalidateQueries({ queryKey: ['tones'] });
       toast.success('Tone created');
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create tone'),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err) || 'Failed to create tone'),
   });
 }
 
@@ -47,7 +48,7 @@ export function useUpdateTone() {
       qc.invalidateQueries({ queryKey: ['tones'] });
       toast.success('Tone saved');
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to save tone'),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err) || 'Failed to save tone'),
   });
 }
 
@@ -59,6 +60,6 @@ export function useDeleteTone() {
       qc.invalidateQueries({ queryKey: ['tones'] });
       toast.success('Tone deleted');
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete tone'),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err) || 'Failed to delete tone'),
   });
 }

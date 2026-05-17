@@ -83,7 +83,7 @@ export default function CommentsPage() {
           </select>
           <select
             value={filters.platform ?? ''}
-            onChange={(e) => { setFilters({ ...filters, platform: (e.target.value || undefined) as any }); setPage(1); }}
+            onChange={(e) => { setFilters({ ...filters, platform: (e.target.value || undefined) as 'LINKEDIN' | 'TWITTER' | undefined }); setPage(1); }}
             className="px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-700 bg-white"
           >
             <option value="">All Platforms</option>

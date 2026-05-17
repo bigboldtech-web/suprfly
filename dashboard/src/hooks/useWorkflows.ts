@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { Workflow } from '@/types';
+import { apiErrorMessage } from '@/lib/utils';
 
 export function useWorkflows() {
   return useQuery<Workflow[]>({
@@ -35,7 +36,7 @@ export function useCreateWorkflow() {
       qc.invalidateQueries({ queryKey: ['accounts'] });
       toast.success('Workflow created');
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create workflow'),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err) || 'Failed to create workflow'),
   });
 }
 
@@ -50,7 +51,7 @@ export function useUpdateWorkflow() {
       qc.invalidateQueries({ queryKey: ['accounts'] });
       toast.success('Workflow saved');
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to save workflow'),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err) || 'Failed to save workflow'),
   });
 }
 
@@ -87,7 +88,7 @@ export function useAddKeyword() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['workflows', vars.workflowId] });
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to add keyword'),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err) || 'Failed to add keyword'),
   });
 }
 
@@ -106,12 +107,12 @@ export function useDeleteKeyword() {
 export function useAddCreator() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ workflowId, ...creator }: { workflowId: string } & Record<string, any>) =>
+    mutationFn: ({ workflowId, ...creator }: { workflowId: string } & Record<string, unknown>) =>
       api.post(`/workflows/${workflowId}/creators`, creator).then((r) => r.data),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['workflows', vars.workflowId] });
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to add creator'),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err) || 'Failed to add creator'),
   });
 }
 

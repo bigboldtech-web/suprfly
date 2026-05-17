@@ -24,6 +24,14 @@ export function formatNumber(num: number) {
   return num.toString();
 }
 
+export function apiErrorMessage(err: unknown): string | undefined {
+  if (err && typeof err === 'object') {
+    const e = err as { response?: { data?: { message?: string } }; message?: string };
+    return e.response?.data?.message ?? e.message;
+  }
+  return undefined;
+}
+
 export function getInitials(name: string | null | undefined) {
   if (!name) return '?';
   return name
