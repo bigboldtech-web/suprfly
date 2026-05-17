@@ -244,6 +244,27 @@ export class LinkedInVoyagerClient {
     return profiles;
   }
 
+  async getCommentStats(commentUrn: string): Promise<{ likes: number; replies: number; views: number }> {
+    // Voyager exposes social-actions for any URN: numLikes, numComments, etc.
+    // commentUrn looks like: urn:li:comment:(activity:6912345,7012345)
+    const encodedUrn = encodeURIComponent(commentUrn);
+    const res = await fetch(
+      `https://www.linkedin.com/voyager/api/feed/socialActions/${encodedUrn}`,
+      { headers: this.headers },
+    );
+    if (!res.ok) {
+      // LinkedIn doesn't expose per-comment impressions on the web API,
+      // so views stay 0. Likes + replies are still useful.
+      return { likes: 0, replies: 0, views: 0 };
+    }
+    const data: any = await res.json();
+    return {
+      likes: data.likesSummary?.totalLikes ?? data.numLikes ?? 0,
+      replies: data.commentsSummary?.totalComments ?? data.numComments ?? 0,
+      views: 0,
+    };
+  }
+
   async getManagedOrganizations(): Promise<Array<{
     orgUrn: string; name: string; logoUrl?: string; vanityName?: string;
   }>> {
@@ -273,4 +294,17 @@ export class LinkedInVoyagerClient {
 export async function fetchManagedOrganizations(encryptedSessionData: string) {
   const client = new LinkedInVoyagerClient(encryptedSessionData);
   return client.getManagedOrganizations();
+}
+
+export async function fetchCommentStats(
+  encryptedSessionData: string,
+  commentUrn: string,
+): Promise<{ likes: number; replies: number; views: number } | null> {
+  try {
+    const client = new LinkedInVoyagerClient(encryptedSessionData);
+    return await client.getCommentStats(commentUrn);
+  } catch (err) {
+    logger.warn(`fetchCommentStats failed for ${commentUrn}: ${(err as Error).message}`);
+    return null;
+  }
 }

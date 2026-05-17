@@ -167,6 +167,29 @@ export class TwitterApiClient {
     return { success: false, error: `${res.status}: ${errorText.substring(0, 200)}` };
   }
 
+  async getTweetStats(tweetId: string): Promise<{ likes: number; replies: number; views: number }> {
+    // 1.1 statuses/show is still served for backward compat; cheaper than the GraphQL
+    // TweetResultByRestId endpoint (whose queryId rotates).
+    const params = new URLSearchParams({
+      id: tweetId,
+      tweet_mode: 'extended',
+      include_my_retweet: '1',
+    });
+    const res = await fetch(
+      `https://x.com/i/api/1.1/statuses/show.json?${params}`,
+      { headers: this.headers },
+    );
+    if (!res.ok) {
+      return { likes: 0, replies: 0, views: 0 };
+    }
+    const data: any = await res.json();
+    return {
+      likes: data.favorite_count ?? 0,
+      replies: data.reply_count ?? 0,
+      views: Number(data.ext_views?.count ?? data.view_count ?? 0) || 0,
+    };
+  }
+
   async searchUsers(query: string): Promise<any[]> {
     const params = new URLSearchParams({
       q: query,
@@ -243,5 +266,18 @@ export class TwitterApiClient {
     }
 
     return tweets;
+  }
+}
+
+export async function fetchTweetStats(
+  encryptedSessionData: string,
+  tweetId: string,
+): Promise<{ likes: number; replies: number; views: number } | null> {
+  try {
+    const client = new TwitterApiClient(encryptedSessionData);
+    return await client.getTweetStats(tweetId);
+  } catch (err) {
+    logger.warn(`fetchTweetStats failed for ${tweetId}: ${(err as Error).message}`);
+    return null;
   }
 }

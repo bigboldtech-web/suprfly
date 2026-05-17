@@ -1,6 +1,8 @@
 import { Job } from 'bullmq';
 import { prisma } from '../../config/database';
 import { logger } from '../../utils/logger';
+import { fetchCommentStats } from '../linkedin/voyagerApi';
+import { fetchTweetStats } from '../twitter/twitterApi';
 
 // Polls engagement stats (likes / replies / views) for recently-posted comments.
 // Cadence: every 30 minutes for the first 7 days, then ~daily until 30 days post-post.
@@ -41,19 +43,10 @@ export async function processStatsPoll(_job: Job) {
   let polled = 0;
   for (const comment of candidates) {
     try {
-      let stats: { likes: number; replies: number; views: number } | null = null;
-
-      if (comment.platform === 'LINKEDIN') {
-        const linkedinMod: any = await import('../linkedin/voyagerApi');
-        if (typeof linkedinMod.fetchCommentStats === 'function') {
-          stats = await linkedinMod.fetchCommentStats(comment.account.sessionData, comment.platformCommentId!);
-        }
-      } else {
-        const twitterMod: any = await import('../twitter/twitterApi');
-        if (typeof twitterMod.fetchTweetStats === 'function') {
-          stats = await twitterMod.fetchTweetStats(comment.account.sessionData, comment.platformCommentId!);
-        }
-      }
+      const stats =
+        comment.platform === 'LINKEDIN'
+          ? await fetchCommentStats(comment.account.sessionData, comment.platformCommentId!)
+          : await fetchTweetStats(comment.account.sessionData, comment.platformCommentId!);
 
       if (stats) {
         await prisma.comment.update({

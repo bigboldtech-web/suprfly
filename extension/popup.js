@@ -172,6 +172,81 @@ function renderPlatformCard(platform, connection) {
     newBtn.className = 'btn btn-connect';
     newBtn.addEventListener('click', () => handleConnect(platform));
   }
+
+  // LinkedIn-only: surface the company-page picker when personal is connected
+  if (platform === 'linkedin') renderLinkedInCompanySection(connection);
+}
+
+// ─── LinkedIn Company-Page Picker ───
+function renderLinkedInCompanySection(connection) {
+  const section = document.getElementById('linkedin-company-section');
+  const list = document.getElementById('linkedin-company-list');
+  const toggle = document.getElementById('linkedin-company-toggle');
+
+  if (!connection || !connection.isConnected || !connection.accountId) {
+    section.classList.add('hidden');
+    list.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+
+  // Replace listener via clone (re-render-safe)
+  const freshToggle = toggle.cloneNode(true);
+  toggle.parentNode.replaceChild(freshToggle, toggle);
+
+  freshToggle.addEventListener('click', async () => {
+    if (!list.classList.contains('hidden')) {
+      list.classList.add('hidden');
+      return;
+    }
+    list.classList.remove('hidden');
+    list.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:4px 0;">Loading…</div>';
+
+    const result = await sendMessage({
+      action: 'LIST_MANAGED_ORGS',
+      personalAccountId: connection.accountId,
+    });
+
+    if (!result.success || !result.organizations || result.organizations.length === 0) {
+      list.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:4px 0;">No company pages found on this account.</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    for (const org of result.organizations) {
+      const row = document.createElement('div');
+      row.className = 'company-row';
+      const name = document.createElement('span');
+      name.className = 'company-row-name';
+      name.textContent = org.name || 'Company page';
+      const btn = document.createElement('button');
+      btn.className = 'company-row-connect';
+      btn.textContent = 'Connect';
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = 'Connecting…';
+        const resp = await sendMessage({
+          action: 'CONNECT_COMPANY',
+          organizationUrn: org.orgUrn,
+          organizationName: org.name,
+          organizationLogoUrl: org.logoUrl,
+          organizationVanity: org.vanityName,
+        });
+        if (resp && resp.success) {
+          btn.textContent = 'Connected ✓';
+          btn.classList.add('connected');
+          showToast(`Connected company page: ${org.name}`, 'success');
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Connect';
+          showToast(resp?.message || 'Failed to connect company page', 'error');
+        }
+      });
+      row.appendChild(name);
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+  });
 }
 
 // ─── Handle Connect ───
