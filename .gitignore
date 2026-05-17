@@ -17,11 +17,12 @@ out/
 *.log
 logs/
 
-# OS / editor
+# OS / editor / IDE config
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+.claude/
 
 # Coverage / test artifacts
 coverage/
